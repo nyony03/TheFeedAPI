@@ -16,21 +16,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
-
 #[ORM\Entity(repositoryClass: PublicationRepository::class)]
 #[ApiResource(
-    operations: [
-        new Get(),
-        new GetCollection(),
-        new Post(security: "is_granted('ROLE_USER')", processor: PublicationUserSetter::class),
-        new Delete(security: "is_granted('ROLE_USER') and object.auteur = user")],
-    normalizationContext: ["groups" => ["publication:read", "utilisateur:read"]],
-    order: ['datePublication' => 'DESC']
-
-)]
-#[ApiResource(
-    uriTemplate: '/publications/{idUtilisateur}/utilisateurs',
-    //On autorise seulement le GetCollection (liste de tous les publications de l'auteur)
+    uriTemplate: '/utilisateur/{idUtilisateur}/publications',
     operations: [new GetCollection()],
     uriVariables: [
         'idUtilisateur' => new Link(
@@ -38,7 +26,14 @@ use Symfony\Component\Validator\Constraints as Assert;
             fromClass: Utilisateur::class
         )
     ],
-    order: ['datePublication' => 'DESC']
+    normalizationContext: ["groups" => ["publication:read", "utilisateur:read"]],
+    order: ["datePublication" => "DESC"]
+)]
+#[ApiResource(operations: [new GetCollection(), new Get(),
+    new Delete(security: "is_granted('ROLE_USER') and object.auteur = user"),
+    new Post(security: "is_granted('ROLE_USER')", processor: PublicationUserSetter::class)],
+    normalizationContext: ["groups" => ["publication:read", "utilisateur:read"]],
+    order: ["datePublication" => "DESC"]
 )]
 class Publication
 {
@@ -48,21 +43,22 @@ class Publication
     #[Groups(['publication:read'])]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[Groups(['publication:read'])]
+    #[Assert\Length(min: 4, max: 200)]
     #[Assert\NotBlank]
     #[Assert\NotNull]
-    #[Groups(['publication:read'])]
+    #[ORM\Column(length: 200)]
     private ?string $message;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    #[ApiProperty(writable: false)]
     #[Groups(['publication:read'])]
+    #[ApiProperty(writable: false)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $datePublication;
 
-    #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'publications')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    #[ApiProperty(readable: false, writable: false)]
     #[Groups(['publication:read'])]
+    #[ApiProperty(writable: false)]
+    #[ORM\ManyToOne(inversedBy: 'publications')]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Utilisateur $auteur = null;
 
     public function __construct()

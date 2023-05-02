@@ -24,13 +24,13 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ApiResource(
     operations: [
         new Get(),
-        new Patch(denormalizationContext: ["groups" => ["utilisateur:update"]],
-            security: "is_granted('ROLE_USER' and user === object)",
-            validationContext: ["groups" => ["Default", "utilisateur:update"]],
-            processor: UserPasswordHasher::class),
         new GetCollection(),
+        new Patch(denormalizationContext: ["groups" => ["utilisateur:update"]],
+            security: "is_granted('ROLE_USER') and object == user",
+            validationContext: ["utilisateur:update", "Default"],
+            processor: UserPasswordHasher::class),
         new Post(denormalizationContext: ["groups" => ["utilisateur:create"]],
-            validationContext: ["groups" => ["Default", "utilisateur:create"]],
+            validationContext: ["utilisateur:create", "Default"],
             processor: UserPasswordHasher::class),
         new Delete(security: "is_granted('ROLE_USER') and user === object")],
     normalizationContext: ["groups" => ["utilisateur:read"]],
@@ -62,9 +62,8 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['utilisateur:read', 'utilisateur:create', 'utilisateur:update'])]
     private ?string $email = null;
 
-    #[ORM\OneToMany(mappedBy: 'auteur', targetEntity: Publication::class, cascade: ['remove'])]
-    #[Groups(['utilisateur:read'])]
-    private iterable $publications;
+    #[ORM\OneToMany(mappedBy: 'auteur', targetEntity: Publication::class, orphanRemoval: true)]
+    private Collection $publications;
 
     #[ORM\Column(length: 255)]
     #[ApiProperty(readable: false, writable: false)]
